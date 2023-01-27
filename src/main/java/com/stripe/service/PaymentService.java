@@ -32,33 +32,38 @@ public class PaymentService {
 	private PaymentMethodCollection listPaymentMethods;
 	private float total_amount = 0;
 	private int counter =1;
+	
 	public void createCard(PaymentDto dto) throws StripeException 
 	{
 		Stripe.apiKey = stripe_key;
 		
-		//create payment method
+		//create payment method (card)
 		PaymentMethod createPayment = createPaymentMethod(dto);
-		//attach method with payment
+		//attach card with customer
 		attachCustomer(dto.getCus_id(), createPayment);	
 	}
-	public List<PurchaseProductDto> chargeCard(BillingDto dto,String cusId,String paymentId)  
+	public BillingDto chargeCard(BillingDto dto)  
 	{
-		
 		Stripe.apiKey = stripe_key;
 		
 		List<Object> paymentMethodTypes = new ArrayList<>();
 		paymentMethodTypes.add("card");
 		
+		/*
+		 * metadata for purchased products
+		 */
 		Map<String, Object> metadata= new HashMap<>();
-		
+		List<Map> list = new ArrayList<>();
 		dto.getPurchase().forEach(d -> {
+		
 		metadata.put("item no " + String.valueOf(counter) , "");
-		metadata.put("metadata " + String.valueOf(counter), d.getProduct());
+		metadata.put("product " + String.valueOf(counter), d.getProduct());
 		metadata.put( "brand " + String.valueOf(counter),d.getBrand());
 		metadata.put("model " + String.valueOf(counter), d.getModel());
 		metadata.put("quantity " + String.valueOf(counter) ,String.valueOf(d.getQty()));
 		metadata.put("amount " + String.valueOf(counter), String.valueOf(d.getAmount() * d.getQty()));
 		metadata.put("purchase_date " + String.valueOf(counter),String.valueOf(new Date()));
+		
 		total_amount += (d.getAmount() * d.getQty());
 		counter++;
 		});
@@ -67,18 +72,31 @@ public class PaymentService {
 		params.put("amount", (int)total_amount * 100);
 		params.put("currency", "INR");
 		params.put( "payment_method_types",paymentMethodTypes);
-		params.put("payment_method", paymentId);
+		params.put("payment_method", dto.getPayment_method_id());
 		params.put("confirm", true);
-		params.put("customer", cusId);
+		params.put("customer", dto.getCus_id());
 		params.put("metadata", metadata);
 		params.put("receipt_email", "giantgujarat@gmail.com");
 		params.put("description","metadata available for purchased items");
 		
 		System.out.println("bill created for purchased items : " + total_amount);
 		try {
+		/*
+		 * create payment intent for transaction
+		 */
 		PaymentIntent paymentIntent =  PaymentIntent.create(params);
+		dto.setTransaction_id(paymentIntent.getId());
 		System.out.println(paymentIntent);
-		flag = true;
+		if(dto.getTransaction_id() != null)
+		{
+			flag = true;
+			return dto;
+		}
+		else 
+		{	
+			flag = false;
+			return null;
+		}
 		}
 		catch (StripeException e) 
 		{
@@ -86,9 +104,16 @@ public class PaymentService {
 			System.out.println(e.getMessage());
 			return null;
 		}
-			return dto.getPurchase();
 	}
-
+	public void getTransaction(String transaction_id) throws StripeException 
+	{
+		Stripe.apiKey = stripe_key;
+		PaymentIntent paymentIntent = PaymentIntent.retrieve(transaction_id);
+		
+	}
+	/*
+	 * create patment method
+	 */
 	public PaymentMethod createPaymentMethod(PaymentDto dto) throws StripeException {
 		metadata = new HashMap<>();
 		metadata.put("card", "this card used for testing purpose");
@@ -105,19 +130,24 @@ public class PaymentService {
 		params.put("card", card);
 
 		System.out.println(">>>>>>>>>>payment method----------------");
-
+		/*
+		 * request to create payment method
+		 */
 		PaymentMethod paymentMethod = PaymentMethod.create(params);
 		System.out.println(paymentMethod);
 
 		return paymentMethod;
 	}
 
+	/*
+	 * attach payment method with customer
+	 */
 	public boolean attachCustomer(String id, PaymentMethod paymentMethod) {
 		try 
 		{
 			params = new HashMap<>();
 			params.put("customer", id);
-
+			
 			PaymentMethod updatedPaymentMethod = paymentMethod.attach(params);
 			System.out.println(">>>>>>>>>>>>payment method attached with customer");
 			flag = true;
@@ -133,7 +163,9 @@ public class PaymentService {
 		}
 		return flag;		
 	}
-	
+	/*
+	 * dettach payment method from customer
+	 */
 	public boolean dettachCustomer(PaymentMethod paymentMethod) {
 		try 
 		{
@@ -147,7 +179,9 @@ public class PaymentService {
 		}
 		return flag;
 	}
-
+	/*
+	 * get all payment methods attached with particular customer
+	 */
 	public PaymentMethodCollection listPaymentAllMethodsCustomer(Customer customer) throws StripeException {
 		listPaymentMethods = customer.listPaymentMethods();
 		System.out.println("fetch all payment methods attached with customer");

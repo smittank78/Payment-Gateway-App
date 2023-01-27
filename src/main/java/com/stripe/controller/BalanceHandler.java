@@ -1,5 +1,8 @@
 package com.stripe.controller;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,14 +25,17 @@ public class BalanceHandler {
 	private String stripe_key;
 
 	@GetMapping("/getBalance")
-	public void getBalance() {
+	public Balance getBalance() {
 		Stripe.apiKey = stripe_key;
-
+		
 		try {
-			Balance balance = service.getBalance();
-			System.out.println("balance : " + balance);
-		} catch (StripeException e) {
+			Balance bal = service.getBalance();
+			System.out.println("balance : " + bal);
+			return bal;
+
+		} catch (Exception e) {
 			System.out.println(e.getMessage());
+			return null;		
 		}
 	}
 

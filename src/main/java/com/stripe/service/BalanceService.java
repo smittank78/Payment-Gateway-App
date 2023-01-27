@@ -17,18 +17,17 @@ public class BalanceService {
 
 	private Map<String, Object> params;
 
-	public Balance getBalance() throws StripeException
+	public Balance getBalance() throws StripeException,Exception
 	{
 		Stripe.apiKey = stripe_key;
 		
 		return Balance.retrieve();
 	}
-	
 	public BalanceTransaction getTransaction() throws StripeException
 	{
 		Stripe.apiKey = stripe_key;
 
-		BalanceTransaction balanceTransaction = BalanceTransaction.retrieve("txn_1032HU2eZvKYlo2CEPtcnUvl");
+		BalanceTransaction balanceTransaction = BalanceTransaction.retrieve("pm_1MPImOSELHgt6QL6bAgFpbgV");
 		return balanceTransaction;
 	}	
 	public BalanceTransactionCollection getAllTransaction() throws StripeException

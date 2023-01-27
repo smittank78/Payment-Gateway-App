@@ -14,13 +14,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.stripe.dto.BillingDto;
-import com.stripe.dto.CardDto;
 import com.stripe.dto.PaymentDto;
 import com.stripe.dto.PurchaseProductDto;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Customer;
 import com.stripe.model.PaymentMethodCollection;
 import com.stripe.service.CustomerService;
+import com.stripe.service.OutputFormatService;
 import com.stripe.service.PaymentService;
 
 @RestController
@@ -33,35 +33,37 @@ public class PaymentHandler
 	@Autowired
 	private CustomerService customerService;
 	
+	@Autowired
+	private OutputFormatService opService;
+	
 	@Value("${stripe.key}")
 	private String stripe_key;
 
+	/*
+	 * this method creates payment method and attach it with customer, 
+	 * by using that method user can make transaction
+	 */
 	@GetMapping("/createCard")
-	public List getBalance(@RequestBody PaymentDto dto) //,@PathVariable("cus_id") String id) 
+	public List createPaymentMethod(@RequestBody PaymentDto dto)
 	{
 		List list = new ArrayList<>();
 		try {
+			/*
+			 * create payment method
+			 */
 			payService.createCard(dto);
+			/*
+			 * fetch customer to retrive all payment method associated with that customer
+			 */
 			Customer customer = customerService.retrive(dto.getCus_id());
 			PaymentMethodCollection listPaymentAllMethodsCustomer = payService.listPaymentAllMethodsCustomer(customer);
 			System.out.println("------------------------------------------------------------------");
+			/*
+			 * format payment details as we are going to send it to user
+			 */
+			list = opService.paymentCardDetail(listPaymentAllMethodsCustomer);
 			System.out.println(listPaymentAllMethodsCustomer);
-			listPaymentAllMethodsCustomer.getData().forEach(a->{
-				Map<String,Object> map = new HashMap<>();
-				map.put("Payment_Type", a.getType());
-				if(map.get("Payment_Type").equals("card"))
-				{
-					map.put("Card_Type", a.getCard().getFunding());
-				}
-				map.put("Brand", a.getCard().getBrand());
-				map.put("Last4digit", a.getCard().getLast4());
-				map.put("Exipre_Month", a.getCard().getExpMonth());
-				map.put("Exipre_Year", a.getCard().getExpYear());
-				map.put("Network", a.getCard().getNetworks().getAvailable());
-				map.put("cvc", a.getCard().getChecks().getCvcCheck());
-				map.put("Pyment_id", a.getId());
-				list.add(map);
-			});
+			
 		} 
 		catch (StripeException e) {
 			System.out.println(e.getMessage());
@@ -69,13 +71,26 @@ public class PaymentHandler
 		return list;
 	}
 	
-	@GetMapping("/purchase/{cus_id}/{payment_id}")
-	public List<PurchaseProductDto> getBalance1(@PathVariable("cus_id") String cus_id,@PathVariable("payment_id") String payment_id,@RequestBody BillingDto dto) throws StripeException //,@PathVariable("cus_id") String id) 
+	@GetMapping("/purchase")
+	public BillingDto payment(@RequestBody BillingDto dto) throws StripeException //,@PathVariable("cus_id") String id) 
 	{
-		System.out.println("cus : " + cus_id);
-		System.out.println("payment : " + payment_id);
+		System.out.println("cus : " + dto.getCus_id());
+		System.out.println("payment method : " + dto.getPayment_method_id());
+		/*
+		 * charge a customer
+		 */
+		dto = payService.chargeCard(dto);
+		return dto;
+	}
+	/*
+	 * retrive any payment transaction by transaction-id
+	 */
+	@GetMapping("/retrivePayment/{transaction-id}")
+	public List<PurchaseProductDto> getBalance1(@PathVariable("transaction-id") String transaction_id) throws StripeException //,@PathVariable("cus_id") String id) 
+	{
+		System.out.println("transaction : " + transaction_id);
 
-		List<PurchaseProductDto> list = payService.chargeCard(dto,cus_id,payment_id);
-		return list;
+		payService.getTransaction(transaction_id);
+		return null;
 	}
 }

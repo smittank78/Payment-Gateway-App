@@ -25,18 +25,21 @@ public class BalanceHandler {
 	private String stripe_key;
 
 	@GetMapping("/getBalance")
-	public Balance getBalance() {
+	public Map<String, Long> getBalance() {
 		Stripe.apiKey = stripe_key;
+		Map< String, Long> balance = new HashMap<>();
 		
 		try {
 			Balance bal = service.getBalance();
 			System.out.println("balance : " + bal);
-			return bal;
+			balance.put("available", bal.getAvailable().get(0).getAmount());
+			balance.put("pending", bal.getPending().get(0).getAmount());
 
-		} catch (Exception e) {
+		} catch (StripeException e) {
 			System.out.println(e.getMessage());
-			return null;		
 		}
+		return balance;
+		
 	}
 
 	@GetMapping("/transaction/getTransaction")

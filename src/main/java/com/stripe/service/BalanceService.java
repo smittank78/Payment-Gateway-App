@@ -17,7 +17,7 @@ public class BalanceService {
 
 	private Map<String, Object> params;
 
-	public Balance getBalance() throws StripeException,Exception
+	public Balance getBalance() throws StripeException
 	{
 		Stripe.apiKey = stripe_key;
 		

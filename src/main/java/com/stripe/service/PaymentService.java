@@ -18,6 +18,7 @@ import com.stripe.model.Customer;
 import com.stripe.model.PaymentIntent;
 import com.stripe.model.PaymentMethod;
 import com.stripe.model.PaymentMethodCollection;
+import com.stripe.param.PaymentIntentCreateParams;
 
 @Service
 public class PaymentService {
@@ -37,12 +38,12 @@ public class PaymentService {
 	{
 		Stripe.apiKey = stripe_key;
 		
-		//create payment method (card)
+		//create payment method
 		PaymentMethod createPayment = createPaymentMethod(dto);
-		//attach card with customer
+		//attach method with payment
 		attachCustomer(dto.getCus_id(), createPayment);	
 	}
-	public BillingDto chargeCard(BillingDto dto)  
+	public List<PurchaseProductDto> chargeCard(BillingDto dto,String cusId,String paymentId)  
 	{
 		Stripe.apiKey = stripe_key;
 		
@@ -53,17 +54,15 @@ public class PaymentService {
 		 * metadata for purchased products
 		 */
 		Map<String, Object> metadata= new HashMap<>();
-		List<Map> list = new ArrayList<>();
-		dto.getPurchase().forEach(d -> {
 		
+		dto.getPurchase().forEach(d -> {
 		metadata.put("item no " + String.valueOf(counter) , "");
-		metadata.put("product " + String.valueOf(counter), d.getProduct());
+		metadata.put("metadata " + String.valueOf(counter), d.getProduct());
 		metadata.put( "brand " + String.valueOf(counter),d.getBrand());
 		metadata.put("model " + String.valueOf(counter), d.getModel());
 		metadata.put("quantity " + String.valueOf(counter) ,String.valueOf(d.getQty()));
 		metadata.put("amount " + String.valueOf(counter), String.valueOf(d.getAmount() * d.getQty()));
 		metadata.put("purchase_date " + String.valueOf(counter),String.valueOf(new Date()));
-		
 		total_amount += (d.getAmount() * d.getQty());
 		counter++;
 		});
@@ -72,9 +71,9 @@ public class PaymentService {
 		params.put("amount", (int)total_amount * 100);
 		params.put("currency", "INR");
 		params.put( "payment_method_types",paymentMethodTypes);
-		params.put("payment_method", dto.getPayment_method_id());
+		params.put("payment_method", paymentId);
 		params.put("confirm", true);
-		params.put("customer", dto.getCus_id());
+		params.put("customer", cusId);
 		params.put("metadata", metadata);
 		params.put("receipt_email", "giantgujarat@gmail.com");
 		params.put("description","metadata available for purchased items");
@@ -85,18 +84,9 @@ public class PaymentService {
 		 * create payment intent for transaction
 		 */
 		PaymentIntent paymentIntent =  PaymentIntent.create(params);
-		dto.setTransaction_id(paymentIntent.getId());
+
 		System.out.println(paymentIntent);
-		if(dto.getTransaction_id() != null)
-		{
-			flag = true;
-			return dto;
-		}
-		else 
-		{	
-			flag = false;
-			return null;
-		}
+		flag = true;
 		}
 		catch (StripeException e) 
 		{
@@ -104,15 +94,11 @@ public class PaymentService {
 			System.out.println(e.getMessage());
 			return null;
 		}
+			return dto.getPurchase();
 	}
-	public void getTransaction(String transaction_id) throws StripeException 
-	{
-		Stripe.apiKey = stripe_key;
-		PaymentIntent paymentIntent = PaymentIntent.retrieve(transaction_id);
-		
-	}
+
 	/*
-	 * create patment method
+	 * create payment method
 	 */
 	public PaymentMethod createPaymentMethod(PaymentDto dto) throws StripeException {
 		metadata = new HashMap<>();

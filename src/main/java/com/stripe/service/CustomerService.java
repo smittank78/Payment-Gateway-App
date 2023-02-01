@@ -1,9 +1,13 @@
 package com.stripe.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
 import com.stripe.Stripe;
 import com.stripe.dto.CustomerDto;
 import com.stripe.exception.StripeException;
@@ -23,69 +27,45 @@ public class CustomerService {
 
 	public Customer create(CustomerDto dto) throws StripeException {
 		Stripe.apiKey = stripe_key;
-		
-		Map<String, String> address = new HashMap<>();
-		address.put("line1",dto.getAddressLine1());
-		address.put("line2",dto.getAddressLine2());
-		address.put("city",dto.getAddressCity());
-		address.put("state",dto.getAddressState());
-		address.put("country",dto.getAddressCountry());
-		address.put("postal_code",dto.getAddressPostalCode());
-		
 		params = new HashMap<>();
 		params.put("phone", dto.getPhone());
 		params.put("name", dto.getName());
 		params.put("email", dto.getEmail());
 		params.put("description", dto.getDescription());
-		params.put("address", address);
 
 		customer = Customer.create(params);
 		System.out.println("created---------------------------------------------------------------------");
 		return customer;
 	}
 
-	public Customer retrive(String cusId) throws StripeException {
+	public Customer retrive(String id) throws StripeException {
 		Stripe.apiKey = stripe_key;
 
-		customer = Customer.retrieve(cusId);
+		customer = Customer.retrieve(id);
 		System.out.println("retrive---------------------------------------------------------------------");
 
 		return customer;
 	}
 
-	public Customer delete(String cusId) throws StripeException {
+	public Customer delete(String id) throws StripeException {
 		Stripe.apiKey = stripe_key;
 
-		try {
+		customer = Customer.retrieve(id);
+
+		Customer deletedCustomer = customer.delete();
 		System.out.println("delete---------------------------------------------------------------------");
-		customer = Customer.retrieve(cusId);
-		customer = customer.delete();
-		}
-		catch (Exception e) {
-			customer = null;
-		}
-		
-		return customer;
+
+		return deletedCustomer;
 	}
 
-	public Customer update(CustomerDto dto) throws StripeException {
+	public Customer update(String id) throws StripeException {
 		Stripe.apiKey = stripe_key;
 
-		customer = Customer.retrieve(dto.getCusId());
-
-		Map<String, String> address = new HashMap<>();
-		address.put("line1",dto.getAddressLine1());
-		address.put("line2",dto.getAddressLine2());
-		address.put("city",dto.getAddressCity());
-		address.put("state",dto.getAddressState());
-		address.put("country",dto.getAddressCountry());
-		address.put("postal_code",dto.getAddressPostalCode());
+		customer = Customer.retrieve(id);
 
 		Map<String, Object> metadata = new HashMap<>();
-		metadata.put("desc", "adress updated");
-
+		metadata.put("order_id", "6735");
 		params = new HashMap<>();
-		params.put("address", address);
 		params.put("metadata", metadata);
 
 		Customer updatedCustomer = customer.update(params);
@@ -94,11 +74,15 @@ public class CustomerService {
 		return updatedCustomer;
 	}
 
-	public CustomerCollection getAllCustomers() throws StripeException {
+	public List<String> getAllCustomers() throws StripeException {
 		Stripe.apiKey = stripe_key;
 		Map<String, Object> params = new HashMap<>();
+		List<String> listOfCustomers = new ArrayList<>();
 		CustomerCollection customers = Customer.list(params);
-		return customers;
+		customers.getData().forEach(c -> {
+			listOfCustomers.add(c.getName());
+		});
+		return listOfCustomers;
 	}
 
 	public CustomerSearchResult findCustomer(String name) throws StripeException {
